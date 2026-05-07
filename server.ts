@@ -2,6 +2,7 @@ import "dotenv/config";
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
+import fs from "fs";
 import { fileURLToPath } from "url";
 import { initExcelService } from "./server/excelService.js";
 import apiRouter from "./server/routes.js";
@@ -24,10 +25,10 @@ async function startServer() {
     console.warn("[Server] API endpoints will return empty data");
   }
 
-  // Mount API routes BEFORE Vite middleware so they take priority
+  // Mounting API routes
   app.use("/api", apiRouter);
 
-  // Vite middleware for development
+  // Vite / Static serving
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -36,15 +37,32 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
-    app.get("*", (req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
-    });
+    if (fs.existsSync(distPath)) {
+      app.use(express.static(distPath));
+      app.get("*", (req, res) => {
+        res.sendFile(path.join(distPath, "index.html"));
+      });
+    }
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+  return app;
+}
+
+// For local development
+if (process.env.NODE_ENV !== "production") {
+  startServer().then(app => {
+    app.listen(3000, "0.0.0.0", () => {
+      console.log(`[Local] Server running on http://localhost:3000`);
+    });
   });
 }
 
-startServer();
+let cachedApp: any = null;
+
+// For Vercel / Serverless
+export default async (req: any, res: any) => {
+  if (!cachedApp) {
+    cachedApp = await startServer();
+  }
+  return cachedApp(req, res);
+};
