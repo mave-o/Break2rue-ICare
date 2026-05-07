@@ -53,7 +53,7 @@ export default function Dashboard({
             <div className="h-10 w-10 bg-[#1f4f45] rounded-xl flex items-center justify-center text-white">
               <Activity className="h-6 w-6" />
             </div>
-            <h1 className="text-2xl font-bold tracking-tight uppercase font-sans">iCare<span className="text-[#8fd1bd]">+</span></h1>
+            <h1 className="text-2xl font-bold tracking-tight uppercase font-sans">Icare</h1>
           </div>
           <p className="text-[10px] uppercase tracking-[0.2em] font-mono text-[#4a7a6e]">Health Companion</p>
         </div>

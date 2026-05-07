@@ -219,11 +219,14 @@ function isReferenceRowEmpty(sheet: any, row: number, maxCol: number): boolean {
 // ─── Main Loading Logic ──────────────────────────────────────────
 
 function resolveXlsxPath(): string {
+  const isVercel = process.env.VERCEL === "1";
+  console.log(`[ExcelService] Detecting environment... (Vercel: ${isVercel})`);
+  
   // Try multiple locations for flexibility
   const currentDir = path.dirname(fileURLToPath(import.meta.url));
   const candidates = [
     path.resolve(process.cwd(), "data", "Hospital_DB.xlsx"),
-    path.resolve(process.cwd(), "backend", "src", "main", "resources", "data", "Hospital_DB.xlsx"),
+    path.resolve(process.cwd(), "Hospital_DB.xlsx"), // fallback root
     path.resolve(currentDir, "..", "data", "Hospital_DB.xlsx"),
   ];
 
