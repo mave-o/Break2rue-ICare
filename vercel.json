@@ -8,7 +8,14 @@
     },
     {
       "src": "server.ts",
-      "use": "@vercel/node"
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": [
+          "data/hospital_db.json",
+          "data/triage.json",
+          "data/specialties.json"
+        ]
+      }
     }
   ],
   "rewrites": [
