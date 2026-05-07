@@ -219,25 +219,29 @@ function isReferenceRowEmpty(sheet: any, row: number, maxCol: number): boolean {
 // ─── Main Loading Logic ──────────────────────────────────────────
 
 function resolveXlsxPath(): string {
-  const isVercel = process.env.VERCEL === "1";
-  console.log(`[ExcelService] Detecting environment... (Vercel: ${isVercel})`);
+  const isVercel = !!process.env.VERCEL;
+  console.log(`[ExcelService] Detecting environment... (Vercel: ${isVercel}, CWD: ${process.cwd()})`);
   
-  // Try multiple locations for flexibility
+  // Try multiple locations for maximum flexibility across local and cloud environments
   const currentDir = path.dirname(fileURLToPath(import.meta.url));
   const candidates = [
     path.resolve(process.cwd(), "data", "Hospital_DB.xlsx"),
-    path.resolve(process.cwd(), "Hospital_DB.xlsx"), // fallback root
+    path.resolve(process.cwd(), "Hospital_DB.xlsx"),
     path.resolve(currentDir, "..", "data", "Hospital_DB.xlsx"),
+    path.resolve(currentDir, "..", "..", "data", "Hospital_DB.xlsx"), // deep nested fallback
+    "/var/task/data/Hospital_DB.xlsx" // common Vercel absolute path
   ];
 
   for (const candidate of candidates) {
     if (fs.existsSync(candidate)) {
+      console.log(`[ExcelService] Found database at: ${candidate}`);
       return candidate;
     }
   }
 
+  const searchedPaths = candidates.join("\n- ");
   throw new Error(
-    `Hospital_DB.xlsx not found. Searched:\n${candidates.join("\n")}`
+    `CRITICAL: Hospital_DB.xlsx not found. Ensure it is in the 'data/' folder at your project root.\nSearched paths:\n- ${searchedPaths}`
   );
 }
 
