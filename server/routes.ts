@@ -11,7 +11,7 @@ import {
   findHospitalById,
   Hospital,
   Doctor,
-} from "./excelService.js";
+} from "./dbService.js";
 import {
   findNearbyHospitals,
   findMatchingHospitals,

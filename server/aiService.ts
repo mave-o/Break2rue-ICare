@@ -5,7 +5,7 @@
  * Uses the real hospital data from ExcelService.
  */
 
-import { Hospital, Doctor, getHospitals } from "./excelService.js";
+import { Hospital, Doctor, getHospitals } from "./dbService.js";
 import fs from "fs";
 import path from "path";
 

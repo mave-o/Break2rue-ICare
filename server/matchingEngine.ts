@@ -4,8 +4,7 @@
  * Haversine distance calculation and hospital matching/scoring.
  */
 
-import { Hospital } from "./excelService.js";
-import { getHospitals } from "./excelService.js";
+import { Hospital, getHospitals } from "./dbService.js";
 
 // ─── Distance Calculator (ported from DistanceCalculator.java) ───
 
