@@ -37,6 +37,8 @@ function resolveJsonPath(): string {
   const candidates = [
     path.resolve(process.cwd(), "data", "hospital_db.json"),
     path.resolve(process.cwd(), "hospital_db.json"),
+    path.join(__dirname, "..", "data", "hospital_db.json"),
+    path.join(__dirname, "data", "hospital_db.json"),
     path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "data", "hospital_db.json"),
     "/var/task/data/hospital_db.json"
   ];

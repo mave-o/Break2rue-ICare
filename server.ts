@@ -4,7 +4,7 @@ import { createServer as createViteServer } from "vite";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
-import { initExcelService } from "./server/excelService.js";
+import { initExcelService, getHospitals } from "./server/dbService.js";
 import apiRouter from "./server/routes.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -16,9 +16,11 @@ async function startServer() {
 
   // DEBUG ENDPOINT - Visit this at /api/debug to troubleshoot environment issues
   app.get("/api/debug", (req, res) => {
-    const dataPath = path.resolve(process.cwd(), "data", "Hospital_DB.xlsx");
+    const dataPath = path.resolve(process.cwd(), "data", "hospital_db.json");
+    const hospitals = getHospitals();
     res.json({
-      status: "debug_info",
+      status: hospitals.length > 0 ? "database_loaded" : "database_empty",
+      hospitalCount: hospitals.length,
       timestamp: new Date().toISOString(),
       env: process.env.NODE_ENV,
       isVercel: !!process.env.VERCEL,
