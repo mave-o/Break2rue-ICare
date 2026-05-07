@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import HospitalMap from "./Map";
+import HospitalDetailPanel from "./HospitalDetailPanel";
 import { UserProfile, HospitalCard } from "@/types";
 import { LogOut, Home, History, User as UserIcon, Activity, Droplet, Wifi, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -10,9 +11,25 @@ interface DashboardProps {
   hospitals: HospitalCard[];
   isLoadingHospitals: boolean;
   backendConnected: boolean;
+  viewMode: 'nearby' | 'all';
+  setViewMode: (mode: 'nearby' | 'all') => void;
+  selectedHospital: HospitalCard | null;
+  setSelectedHospital: (h: HospitalCard | null) => void;
+  suggestedSpecialty: string | null;
 }
 
-export default function Dashboard({ profile, onLogout, hospitals, isLoadingHospitals, backendConnected }: DashboardProps) {
+export default function Dashboard({ 
+  profile, 
+  onLogout, 
+  hospitals, 
+  isLoadingHospitals, 
+  backendConnected,
+  viewMode,
+  setViewMode,
+  selectedHospital,
+  setSelectedHospital,
+  suggestedSpecialty
+}: DashboardProps) {
   const bmi = profile.height && profile.weight 
     ? (Number(profile.weight) / Math.pow(Number(profile.height)/100, 2))
     : 0;
@@ -121,7 +138,12 @@ export default function Dashboard({ profile, onLogout, hospitals, isLoadingHospi
 
       {/* Main Map Area */}
       <main className="flex-1 relative z-0">
-        <HospitalMap hospitals={hospitals} isLoading={isLoadingHospitals} />
+        <HospitalMap 
+          hospitals={hospitals} 
+          isLoading={isLoadingHospitals} 
+          onShowDetail={(h) => setSelectedHospital(h)}
+          selectedHospital={selectedHospital}
+        />
         
         {/* Overlays */}
         <div className="absolute top-6 left-6 pointer-events-none">
@@ -151,9 +173,46 @@ export default function Dashboard({ profile, onLogout, hospitals, isLoadingHospi
                 {backendConnected ? "Database connected" : "Using fallback data"}
               </span>
             </div>
+
+            {/* Toggle Button */}
+            <div className="mt-4 pt-3 border-t border-[#8fd1bd]/20">
+              <div className="flex p-1 bg-[#1f4f45]/5 rounded-xl gap-1">
+                <button
+                  onClick={() => setViewMode('nearby')}
+                  className={cn(
+                    "flex-1 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all duration-300 flex items-center justify-center gap-1.5",
+                    viewMode === 'nearby' 
+                      ? "bg-[#1f4f45] text-white shadow-lg translate-y-[-1px]" 
+                      : "text-[#4a7a6e] hover:bg-[#1f4f45]/10"
+                  )}
+                >
+                  <Activity className={cn("h-3 w-3", viewMode === 'nearby' ? "text-[#8fd1bd]" : "text-[#4a7a6e]")} />
+                  Nearby
+                </button>
+                <button
+                  onClick={() => setViewMode('all')}
+                  className={cn(
+                    "flex-1 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all duration-300 flex items-center justify-center gap-1.5",
+                    viewMode === 'all' 
+                      ? "bg-[#1f4f45] text-white shadow-lg translate-y-[-1px]" 
+                      : "text-[#4a7a6e] hover:bg-[#1f4f45]/10"
+                  )}
+                >
+                  <Home className={cn("h-3 w-3", viewMode === 'all' ? "text-[#8fd1bd]" : "text-[#4a7a6e]")} />
+                  All
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </main>
+
+      {/* Phase 3: Slide-up Detail Panel */}
+      <HospitalDetailPanel 
+        hospital={selectedHospital} 
+        onClose={() => setSelectedHospital(null)} 
+        suggestedSpecialty={suggestedSpecialty}
+      />
     </div>
   );
 }

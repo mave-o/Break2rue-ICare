@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, useMap, Circle } from "react-leaflet";
 import L from "leaflet";
 import { HospitalCard, DoctorRecord } from "@/types";
 import { TAGBILARAN_CENTER } from "@/constants";
@@ -27,27 +27,47 @@ const DefaultIcon = L.icon({
 L.Marker.prototype.options.icon = DefaultIcon;
 
 // Custom Icons for Hospitals
-const HospitalIcon = (type: string) => L.divIcon({
-  className: "custom-div-icon",
-  html: `<div style="background-color: ${type === "Government Hospital" ? "#1f4f45" : "#8fd1bd"}; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.3);"></div>`,
-  iconSize: [12, 12],
-  iconAnchor: [6, 6]
-});
+const HospitalIcon = (type: string) => {
+  const color = "#f87171"; // Pastel red for better visibility
+  return L.divIcon({
+    className: "custom-hospital-icon",
+    html: `
+      <div class="flex items-center justify-center transform -translate-y-1/2 drop-shadow-lg scale-110 transition-transform duration-300 hover:scale-125">
+        <svg width="32" height="42" viewBox="0 0 32 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M16 0C7.16344 0 0 7.16344 0 16C0 28 16 42 16 42C16 42 32 28 32 16C32 7.16344 24.8366 0 16 0Z" fill="${color}"/>
+          <path d="M14 10H18V14H22V18H18V22H14V18H10V14H14V10Z" fill="white"/>
+          <circle cx="16" cy="16" r="14" stroke="white" stroke-width="1" stroke-opacity="0.3"/>
+        </svg>
+      </div>`,
+    iconSize: [32, 42],
+    iconAnchor: [16, 42],
+    popupAnchor: [0, -40]
+  });
+};
 
 const UserLocationIcon = L.divIcon({
   className: "user-location-icon",
-  html: `<div class="relative flex items-center justify-center">
-          <div class="h-4 w-4 rounded-full bg-blue-500 border-2 border-white shadow-lg"></div>
-          <div class="absolute h-8 w-8 rounded-full bg-blue-500/20 animate-ping"></div>
-        </div>`,
-  iconSize: [16, 16],
-  iconAnchor: [8, 8]
+  html: `
+    <div class="relative flex items-center justify-center transform -translate-y-1/2">
+      <div class="absolute h-12 w-12 rounded-full bg-blue-500/30 animate-ping"></div>
+      <div class="absolute h-6 w-6 rounded-full bg-blue-500/10 border border-blue-500/20"></div>
+      <svg width="28" height="38" viewBox="0 0 32 42" fill="none" xmlns="http://www.w3.org/2000/svg" class="drop-shadow-md">
+        <path d="M16 0C7.16344 0 0 7.16344 0 16C0 28 16 42 16 42C16 42 32 28 32 16C32 7.16344 24.8366 0 16 0Z" fill="#3b82f6"/>
+        <circle cx="16" cy="14" r="6" fill="white"/>
+        <path d="M16 22C20 22 24 25 24 28V30H8V28C8 25 12 22 16 22Z" fill="white"/>
+      </svg>
+    </div>`,
+  iconSize: [32, 42],
+  iconAnchor: [16, 42],
+  popupAnchor: [0, -40]
 });
 
 // Helper component to center map
-function ChangeView({ center, zoom }: { center: [number, number], zoom: number }) {
+function ChangeView({ lat, lng, zoom }: { lat: number, lng: number, zoom: number }) {
   const map = useMap();
-  map.setView(center, zoom);
+  useEffect(() => {
+    map.setView([lat, lng], zoom);
+  }, [lat, lng, zoom, map]);
   return null;
 }
 
@@ -115,29 +135,40 @@ function DoctorList({ hospitalId }: { hospitalId: number }) {
 interface HospitalMapProps {
   hospitals: HospitalCard[];
   isLoading: boolean;
+  onShowDetail: (hospital: HospitalCard) => void;
+  selectedHospital: HospitalCard | null;
 }
 
-export default function HospitalMap({ hospitals, isLoading }: HospitalMapProps) {
-  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+export default function HospitalMap({ hospitals, isLoading, onShowDetail, selectedHospital }: HospitalMapProps) {
+  // Mock user location in Barangay Cogon, Tagbilaran (Prototype default)
+  const [userLocation, setUserLocation] = useState<[number, number] | null>([9.6539, 123.8599]);
+  const [hoveredHospital, setHoveredHospital] = useState<HospitalCard | null>(null);
+  const [hoverTimer, setHoverTimer] = useState<NodeJS.Timeout | null>(null);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
-  useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          // Perimeter lock for Tagbilaran (approximate)
-          const isInTagbilaran = latitude > 9.6 && latitude < 9.7 && longitude > 123.8 && longitude < 123.9;
-          if (isInTagbilaran) {
-            setUserLocation([latitude, longitude]);
-          }
-        },
-        (error) => console.warn("Geolocation error:", error)
-      );
-    }
-  }, []);
+  const handleMouseEnter = (h: HospitalCard, e: any) => {
+    if (hoverTimer) clearTimeout(hoverTimer);
+    const timer = setTimeout(() => {
+      setHoveredHospital(h);
+    }, 600);
+    setHoverTimer(timer);
+  };
+
+  const handleMouseLeave = () => {
+    if (hoverTimer) clearTimeout(hoverTimer);
+    setHoveredHospital(null);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    setMousePos({ x: e.clientX, y: e.clientY });
+  };
 
   return (
-    <div className="h-full w-full relative">
+    <div 
+      className="h-full w-full relative" 
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+    >
       {/* Loading overlay */}
       {isLoading && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60 backdrop-blur-sm">
@@ -145,6 +176,20 @@ export default function HospitalMap({ hospitals, isLoading }: HospitalMapProps) 
             <Loader2 className="h-8 w-8 text-[#1f4f45] animate-spin" />
             <p className="text-sm font-medium text-[#1f4f45]">Loading hospital network...</p>
           </div>
+        </div>
+      )}
+
+      {/* Phase 1: Quick Look Hover */}
+      {hoveredHospital && (
+        <div 
+          className="fixed z-[1000] pointer-events-none bg-white/90 backdrop-blur-md border border-red-200 rounded-xl p-3 shadow-2xl animate-in fade-in zoom-in duration-200"
+          style={{ left: mousePos.x + 15, top: mousePos.y - 15 }}
+        >
+          <div className="flex items-center gap-2 mb-1">
+            <div className="h-2 w-2 rounded-full bg-red-400 animate-pulse" />
+            <h5 className="text-[11px] font-bold text-[#1a3d35] uppercase tracking-tight">{hoveredHospital.name}</h5>
+          </div>
+          <p className="text-[9px] text-[#4a7a6e] font-mono">{hoveredHospital.type}</p>
         </div>
       )}
 
@@ -165,60 +210,38 @@ export default function HospitalMap({ hospitals, isLoading }: HospitalMapProps) 
             key={`${h.id}-${h.name}`} 
             position={[h.lat, h.lng]} 
             icon={HospitalIcon(h.type)}
+            eventHandlers={{
+              mouseover: (e) => handleMouseEnter(h, e),
+              mouseout: handleMouseLeave,
+              click: () => {
+                handleMouseLeave();
+              }
+            }}
           >
-            <Popup className="max-w-xs" minWidth={220}>
+            <Popup className="custom-popup" minWidth={200}>
               <div className="p-1 text-[#1a3d35]">
-                <h4 className="font-sans font-medium text-sm mb-1">{h.name}</h4>
-                <p className="text-[10px] text-[#4a7a6e] uppercase tracking-wider mb-2 font-mono">
+                <h4 className="font-sans font-bold text-sm mb-0.5 text-red-500">{h.name}</h4>
+                <p className="text-[9px] text-[#4a7a6e] uppercase tracking-widest mb-2 font-bold">
                   {h.type}
                 </p>
 
-                {/* Distance & Travel (from backend) */}
-                {h.distance && (
-                  <div className="flex items-center gap-3 mb-2 text-[10px] text-[#4a7a6e]">
-                    <span className="bg-[#1f4f45]/10 px-2 py-0.5 rounded-md font-bold text-[#1f4f45]">
-                      {h.distance}
-                    </span>
-                    {h.travel && (
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" /> {h.travel}
-                      </span>
-                    )}
+                <div className="flex items-center justify-between mb-3 bg-red-50/50 p-2 rounded-lg border border-red-100">
+                  <div className="flex flex-col">
+                    <span className="text-[8px] uppercase text-[#4a7a6e]">Distance</span>
+                    <span className="text-[10px] font-bold text-red-600">{h.distance || "N/A"}</span>
                   </div>
-                )}
-
-                <div className="flex flex-wrap gap-1 mb-3">
-                  {h.specializations.slice(0, 4).map((spec, i) => (
-                    <span key={i} className="text-[9px] bg-[#8fd1bd]/20 text-[#1f4f45] px-1.5 py-0.5 rounded-md border border-[#8fd1bd]/30">
-                      {spec}
-                    </span>
-                  ))}
-                  {h.specializations.length > 4 && (
-                    <span className="text-[9px] text-[#4a7a6e] italic">+{h.specializations.length - 4} more</span>
-                  )}
+                  <div className="h-6 w-[1px] bg-red-100" />
+                  <div className="flex flex-col text-right">
+                    <span className="text-[8px] uppercase text-[#4a7a6e]">Status</span>
+                    <span className="text-[10px] font-bold text-green-600">{h.status || "Open"}</span>
+                  </div>
                 </div>
-
-                <div className="flex flex-col gap-1.5">
-                  {h.status && (
-                    <div className="flex items-center gap-2 text-[11px]">
-                      <Clock className="h-3 w-3 text-[#1f4f45]" />
-                      <span>{h.status}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Doctor list — lazy loaded from backend */}
-                <DoctorList hospitalId={h.id} />
 
                 <button
-                  onClick={() => {
-                    const url = `https://www.google.com/maps/dir/?api=1&destination=${h.lat},${h.lng}`;
-                    window.open(url, "_blank");
-                  }}
-                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-[#1f4f45] py-2 text-[11px] font-medium text-white transition-all hover:bg-[#2a665d]"
+                  onClick={() => onShowDetail(h)}
+                  className="w-full flex items-center justify-center gap-2 rounded-lg bg-red-500 py-2 text-[10px] font-bold text-white transition-all hover:bg-red-600 shadow-md shadow-red-500/20 active:scale-95"
                 >
-                  <Navigation className="h-3.5 w-3.5" />
-                  Get Directions
+                  View More Details
                 </button>
               </div>
             </Popup>
@@ -226,14 +249,32 @@ export default function HospitalMap({ hospitals, isLoading }: HospitalMapProps) 
         ))}
 
         {userLocation && (
-          <Marker position={userLocation} icon={UserLocationIcon}>
-            <Popup>
-              <div className="text-xs font-medium">Your current location</div>
-            </Popup>
-          </Marker>
+          <>
+            <Marker position={userLocation} icon={UserLocationIcon}>
+              <Popup>
+                <div className="text-xs font-medium">Your current location (Barangay Cogon)</div>
+              </Popup>
+            </Marker>
+            <Circle 
+              center={userLocation}
+              radius={5000}
+              pathOptions={{
+                fillColor: '#1f4f45',
+                fillOpacity: 0.05,
+                color: '#1f4f45',
+                weight: 1,
+                dashArray: '5, 10'
+              }}
+            />
+          </>
         )}
 
-        <ChangeView center={[TAGBILARAN_CENTER.lat, TAGBILARAN_CENTER.lng]} zoom={14} />
+        {/* Dynamic Zoom Handler */}
+        {selectedHospital ? (
+          <ChangeView lat={selectedHospital.lat} lng={selectedHospital.lng} zoom={16} />
+        ) : (
+          <ChangeView lat={TAGBILARAN_CENTER.lat} lng={TAGBILARAN_CENTER.lng} zoom={14} />
+        )}
       </MapContainer>
     </div>
   );
