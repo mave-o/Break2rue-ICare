@@ -11,6 +11,7 @@
       "use": "@vercel/node",
       "config": {
         "includeFiles": [
+          "public/hospital_db.json",
           "data/hospital_db.json",
           "data/triage.json",
           "data/specialties.json"
